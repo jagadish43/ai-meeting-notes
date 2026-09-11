@@ -1,23 +1,17 @@
-from fastapi import FastAPI, status, HTTPException
-from fastapi.responses import RedirectResponse
-from app.schemas import UserOut, UserAuth
-from replit import db
-from app.utils import get_hashed_password
-from uuid import uuid4
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-@app.post('/signup', summary="Create new user", response_model=UserOut)
-async def create_user(data: UserAuth):
-    # querying database to check if user already exist
-    user = db.get(data.email, None)
-    if user is not None:
-            raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exist"
-        )
-    user = {
-        'email': data.email,
-        'password': get_hashed_password(data.password),
-        'id': str(uuid4())
-    }
-    db[data.email] = user    # saving user to database
-    return user
+from backend.crud import EmailAlreadyRegistered, create_user
+from backend.dependencies import get_db
+from backend.schemas import UserCreate, UserOut
+
+router = APIRouter(tags=["authentication"])
+
+
+@router.post("/signup", response_model=UserOut, status_code=201)
+def signup(data: UserCreate, db: Session = Depends(get_db)):
+    # Both signup endpoints use this same database and password-hashing path.
+    try:
+        return create_user(db, data)
+    except EmailAlreadyRegistered:
+        raise HTTPException(409, "Email already registered") from None
