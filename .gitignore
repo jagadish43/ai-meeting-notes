@@ -15,3 +15,5 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+# Local development database
+meeting_notes.db*
